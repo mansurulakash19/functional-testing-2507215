@@ -522,8 +522,7 @@ def test_average_not_a_sequence(numbers):
 def test_average_non_numeric_items():
     with pytest.raises(TypeError):
         target.average(["a", "b"])
-def test_demo_red():
-    assert target.is_adult(17) is False
+
 
 def test_demo_red():
     assert target.is_adult(17) is False
