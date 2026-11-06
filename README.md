@@ -2,10 +2,10 @@
 
 Functional tests, CI/CD and live deployment for `target.py` (16 functions).
 
-![CI](https://github.com/<your-username>/functional-testing-2507215/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/<mansurulakash19>/functional-testing-2507215/actions/workflows/ci.yml/badge.svg)
 
-**Live site:** https://<your-app>.onrender.com
-**Health / deployed SHA:** https://<your-app>.onrender.com/health
+**Live site:** https://<functional-testing-2507215>.onrender.com
+**Health / deployed SHA:** https://<functional-testing-2507215>.onrender.com/health
 
 ## Setup
 
