@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Lint (target.py is excluded, it must stay unmodified)
+        run: flake8 app.py runner.py tests --max-line-length=100
+
+      - name: Run tests with 100% coverage gate
+        run: >
+          pytest --cov=target --cov-branch --cov-report=term-missing
+          --cov-report=xml --cov-report=html --cov-fail-under=100
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-py${{ matrix.python-version }}
+          path: |
+            coverage.xml
+            htmlcov/
+
+  deploy:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render deploy hook for this commit
+        env:
+          HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+          SHA: ${{ github.sha }}
+        run: curl -fsS -X POST "${HOOK_URL}&ref=${SHA}"
+
+  smoke-test:
+    needs: deploy
+    runs-on: ubuntu-latest
+    env:
+      LIVE_URL: ${{ secrets.LIVE_URL }}
+      EXPECTED_SHA: ${{ github.sha }}
+    steps:
+      - name: Wait until the live site reports the new commit SHA
+        run: |
+          for i in $(seq 1 60); do
+            LIVE_SHA=$(curl -fsS "$LIVE_URL/health" \
+              | python3 -c "import sys, json; print(json.load(sys.stdin).get('sha', ''))" \
+              || true)
+            echo "attempt $i: live sha = '$LIVE_SHA'"
+            if [ "$LIVE_SHA" = "$EXPECTED_SHA" ]; then exit 0; fi
+            sleep 15
+          done
+          echo "Live site never reported $EXPECTED_SHA"
+          exit 1
+
+      - name: Request 1 - home page loads
+        run: curl -fsS "$LIVE_URL/" | grep -q "target.py playground"
+
+      - name: Request 2 - /health returns the SHA
+        run: curl -fsS "$LIVE_URL/health" | grep -q "$EXPECTED_SHA"
+
+      - name: Request 3 - a function runs on the live site
+        run: |
+          curl -fsS -X POST "$LIVE_URL/api/run" \
+            -H "Content-Type: application/json" \
+            -d '{"function": "divide", "args": ["10", "4"]}' | grep -q '2.5'
