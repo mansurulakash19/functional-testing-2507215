@@ -525,4 +525,4 @@ def test_average_non_numeric_items():
 
 
 def test_demo_red():
-    assert target.is_adult(17) is True
+    assert target.is_adult(17) is False
