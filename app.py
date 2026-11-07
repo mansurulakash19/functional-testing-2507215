@@ -111,7 +111,9 @@ def health():
     return jsonify(status="ok", sha=sha)
 
 
-
+@app.get("/api/functions")
+def functions():
+    return jsonify(runner.describe())
 
 
 @app.post("/api/run")
